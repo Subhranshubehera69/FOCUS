@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Focus Flow - A productivity app with timer, stopwatch, and task management">
+    <title>Focus Flow | Productivity App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Background Effects -->
+    <div class="bg-effects">
+        <div class="gradient-orb orb-1"></div>
+        <div class="gradient-orb orb-2"></div>
+        <div class="gradient-orb orb-3"></div>
+    </div>
+
+    <!-- Floating Particles -->
+    <div class="floating-particles" id="floatingParticles"></div>
+
+    <!-- Main Container -->
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                        <circle cx="16" cy="16" r="14" stroke="url(#logoGrad)" stroke-width="3" />
+                        <circle cx="16" cy="16" r="6" fill="url(#logoGrad)" />
+                        <defs>
+                            <linearGradient id="logoGrad" x1="0" y1="0" x2="32" y2="32">
+                                <stop stop-color="#8b5cf6" />
+                                <stop offset="1" stop-color="#06b6d4" />
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <h1>Focus Flow</h1>
+            </div>
+            <div class="current-time" id="currentTime">12:00 PM</div>
+        </header>
+
+        <!-- Split Screen Layout -->
+        <div class="split-screen">
+            <!-- Left Panel - Timer Section -->
+            <section class="timer-section glass-card">
+                <div class="timer-tabs">
+                    <button class="tab-btn active" data-mode="timer">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="12" r="10" />
+                            <polyline points="12,6 12,12 16,14" />
+                        </svg>
+                        Timer
+                    </button>
+                    <button class="tab-btn" data-mode="stopwatch">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <circle cx="12" cy="13" r="8" />
+                            <path d="M12 9v4l2 2" />
+                            <path d="M5 3L2 6" />
+                            <path d="M22 6l-3-3" />
+                            <path d="M12 2v2" />
+                        </svg>
+                        Stopwatch
+                    </button>
+                </div>
+
+                <div class="timer-display">
+                    <svg class="progress-ring" viewBox="0 0 200 200">
+                        <defs>
+                            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#8b5cf6;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#06b6d4;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <circle class="progress-ring-bg" cx="100" cy="100" r="90" />
+                        <circle class="progress-ring-fill" cx="100" cy="100" r="90" id="progressRing" />
+                    </svg>
+                    <div class="timer-value" id="timerValue">25:00</div>
+                    <div class="timer-label" id="timerLabel">Focus Time</div>
+                </div>
+
+                <!-- Timer Presets -->
+                <div class="timer-presets" id="timerPresets">
+                    <button class="preset-btn" data-minutes="5">5m</button>
+                    <button class="preset-btn active" data-minutes="25">25m</button>
+                    <button class="preset-btn" data-minutes="45">45m</button>
+                    <button class="preset-btn" data-minutes="60">60m</button>
+                    <button class="preset-btn custom-preset-btn" id="customPresetBtn">Custom</button>
+                </div>
+
+                <!-- Custom Timer Input (hidden by default) -->
+                <div class="custom-timer-input hidden" id="customTimerInput">
+                    <div class="custom-input-group">
+                        <input type="number" id="customMinutes" min="1" max="180" value="30" placeholder="Min">
+                        <span class="input-label">minutes</span>
+                    </div>
+                    <button class="set-custom-btn" id="setCustomBtn">Set Timer</button>
+                </div>
+
+                <!-- Stopwatch Laps (hidden by default) -->
+                <div class="laps-container hidden" id="lapsContainer">
+                    <div class="laps-header">
+                        <span>Laps</span>
+                        <span id="lapCount">0</span>
+                    </div>
+                    <div class="laps-list" id="lapsList"></div>
+                </div>
+
+                <div class="timer-controls">
+                    <button class="control-btn start-btn" id="startBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <polygon points="5,3 19,12 5,21" />
+                        </svg>
+                        <span class="btn-text">Start</span>
+                    </button>
+                    <button class="control-btn pause-btn hidden" id="pauseBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <rect x="6" y="4" width="4" height="16" />
+                            <rect x="14" y="4" width="4" height="16" />
+                        </svg>
+                        <span class="btn-text">Pause</span>
+                    </button>
+                    <button class="control-btn reset-btn" id="resetBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                        </svg>
+                        <span class="btn-text">Reset</span>
+                    </button>
+                    <button class="control-btn lap-btn hidden" id="lapBtn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+                            <line x1="4" y1="22" x2="4" y2="15" />
+                        </svg>
+                        <span class="btn-text">Lap</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Right Panel - Task Flow Section -->
+            <section class="task-section glass-card">
+                <div class="section-header">
+                    <div class="section-title">
+                        <div class="section-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <path d="M9 11l3 3L22 4" />
+                                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                            </svg>
+                        </div>
+                        <h2>Task Flow</h2>
+                    </div>
+                    <button class="add-task-btn" id="addTaskBtn">
+                        <span>+</span> Add Task
+                    </button>
+                </div>
+
+                <div class="task-canvas" id="taskCanvas">
+                    <svg class="connections-layer" id="connectionsLayer"></svg>
+                    <div class="nodes-container" id="nodesContainer">
+                        <!-- Task nodes will be rendered here -->
+                    </div>
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="1.5">
+                                <path d="M12 2L2 7l10 5 10-5-10-5z" />
+                                <path d="M2 17l10 5 10-5" />
+                                <path d="M2 12l10 5 10-5" />
+                            </svg>
+                        </div>
+                        <p>No tasks yet. Add your first task to get started!</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <!-- End Split Screen -->
+
+        <!-- Task Modal -->
+        <div class="modal-overlay hidden" id="taskModal">
+            <div class="modal glass-card">
+                <div class="modal-header">
+                    <h3 id="modalTitle">Add New Task</h3>
+                    <button class="modal-close" id="modalClose">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="taskName">Task Name</label>
+                        <input type="text" id="taskName" placeholder="Enter task name..." maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label>Steps</label>
+                        <div class="steps-list" id="stepsListModal">
+                            <!-- Steps will be added here -->
+                        </div>
+                        <button class="add-step-btn" id="addStepBtn">
+                            <span>+</span> Add Step
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelTaskBtn">Cancel</button>
+                    <button class="btn btn-primary" id="saveTaskBtn">Save Task</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audio for timer alarm -->
+        <audio id="alarmSound" preload="auto">
+            <source
+                src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleC0APJjG7OZpJQ09l8DT2WIrET6YweZwLwY8mMHp5WglAz2XwurlaCQAPZfD6uVnIwA8l8Pq5WYiADyXw+rlZiEAPJfD6uVlIAA8l8Pq5WQfADuXxOrlYx4AO5fE6uVjHQA7l8Tq5WIbADqXxerlYRoAOpfF6uVgGQA6l8Xq5V8YADmXxurlXhcAOZfG6uVdFgA5l8bq5VwVADiXx+rlWxQAOJfH6uVaEwA4l8fq5VkSADeXyOrlWBEAN5fI6uVXEAA3l8jq5VYPAD"
+                type="audio/wav">
+        </audio>
+
+        <script src="app.js"></script>
+</body>
+
+</html>
