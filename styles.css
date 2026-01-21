@@ -726,14 +726,26 @@ body {
     font-weight: 400;
 }
 
-/* Task Canvas */
+/* Task Canvas - n8n Style */
 .task-canvas {
     position: relative;
-    min-height: 300px;
-    padding: 24px;
-    background: var(--bg-secondary);
+    min-height: 500px;
+    padding: 0;
+    background:
+        radial-gradient(circle at 1px 1px, rgba(139, 92, 246, 0.15) 1px, transparent 0);
+    background-size: 24px 24px;
+    background-color: var(--bg-secondary);
     border-radius: var(--radius-md);
-    overflow: visible;
+    overflow: hidden;
+    cursor: grab;
+}
+
+.task-canvas:active {
+    cursor: grabbing;
+}
+
+.task-canvas.dragging-node {
+    cursor: grabbing;
 }
 
 .connections-layer {
@@ -750,11 +762,9 @@ body {
 .nodes-container {
     position: relative;
     z-index: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 50px;
-    align-items: center;
-    padding: 20px;
+    width: 100%;
+    height: 100%;
+    min-height: 500px;
 }
 
 /* Empty State */
@@ -794,36 +804,45 @@ body {
     display: none;
 }
 
-/* Task Node - n8n Style */
+/* Task Node - n8n Style Draggable */
 .task-node {
-    position: relative;
+    position: absolute;
     width: 280px;
     padding: 20px;
     background: var(--bg-card);
     border: 2px solid var(--border-color);
     border-radius: var(--radius-lg);
-    cursor: pointer;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    cursor: grab;
+    transition: border-color 0.2s, box-shadow 0.2s;
     animation: nodeSlideIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     box-shadow: var(--shadow-md);
+    user-select: none;
+}
+
+.task-node.dragging {
+    cursor: grabbing;
+    z-index: 100;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 30px var(--accent-glow);
+    border-color: var(--accent-primary);
+    transform: scale(1.02);
+    transition: none;
 }
 
 @keyframes nodeSlideIn {
     from {
         opacity: 0;
-        transform: translateY(30px) scale(0.8);
+        transform: scale(0.8);
     }
 
     to {
         opacity: 1;
-        transform: translateY(0) scale(1);
+        transform: scale(1);
     }
 }
 
-.task-node:hover {
+.task-node:hover:not(.dragging) {
     border-color: var(--accent-primary);
     box-shadow: var(--shadow-glow), 0 10px 40px rgba(0, 0, 0, 0.3);
-    transform: translateY(-8px) scale(1.02);
 }
 
 .task-node.completed {
@@ -841,49 +860,35 @@ body {
 .task-node::after {
     content: '';
     position: absolute;
-    width: 16px;
-    height: 16px;
-    background: var(--bg-secondary);
+    width: 14px;
+    height: 14px;
+    background: var(--bg-card);
     border: 3px solid var(--accent-primary);
     border-radius: 50%;
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.2s ease;
     z-index: 10;
+    left: 50%;
+    transform: translateX(-50%);
 }
 
 .task-node::before {
-    top: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    box-shadow: 0 0 0 0 var(--accent-glow);
-    animation: connectorPulse 2s ease-in-out infinite;
+    top: -8px;
+    box-shadow: 0 0 8px var(--accent-glow);
 }
 
 .task-node::after {
-    bottom: -10px;
-    left: 50%;
-    transform: translateX(-50%);
-    box-shadow: 0 0 0 0 var(--accent-glow);
-    animation: connectorPulse 2s ease-in-out infinite 0.5s;
-}
-
-@keyframes connectorPulse {
-
-    0%,
-    100% {
-        box-shadow: 0 0 0 0 var(--accent-glow);
-    }
-
-    50% {
-        box-shadow: 0 0 0 6px transparent;
-    }
+    bottom: -8px;
+    box-shadow: 0 0 8px var(--accent-glow);
 }
 
 .task-node:hover::before,
-.task-node:hover::after {
+.task-node:hover::after,
+.task-node.dragging::before,
+.task-node.dragging::after {
     background: var(--accent-primary);
     border-color: var(--accent-secondary);
-    transform: translateY(-50%) scale(1.3);
     box-shadow: 0 0 15px var(--accent-glow);
+    transform: translateX(-50%) scale(1.2);
 }
 
 .task-header {
@@ -891,6 +896,35 @@ body {
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 16px;
+    gap: 10px;
+}
+
+/* Drag Handle - n8n style */
+.drag-handle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    color: var(--text-muted);
+    cursor: grab;
+    flex-shrink: 0;
+    opacity: 0.5;
+    transition: all var(--transition-fast);
+}
+
+.drag-handle:hover {
+    color: var(--accent-primary);
+    opacity: 1;
+}
+
+.task-node:hover .drag-handle {
+    opacity: 1;
+}
+
+.task-node.dragging .drag-handle {
+    cursor: grabbing;
+    color: var(--accent-primary);
 }
 
 .task-name {
@@ -1021,6 +1055,39 @@ body {
 .step-item.completed .step-text {
     text-decoration: line-through;
     color: var(--text-muted);
+}
+
+/* Step Completion Time Badge */
+.step-completion-time {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.7rem;
+    color: var(--success);
+    background: rgba(16, 185, 129, 0.15);
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+    margin-left: auto;
+    flex-shrink: 0;
+    animation: fadeIn 0.3s ease;
+}
+
+.step-completion-time svg {
+    flex-shrink: 0;
+    color: var(--success);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 .task-progress {
