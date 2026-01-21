@@ -1,6 +1,5 @@
 /**
  * Focus Flow - Productivity Web App
- * Timer, Stopwatch, and Task Management with n8n-style design
  */
 
 // ===============================================
@@ -23,7 +22,16 @@ const state = {
         startTime: 0
     },
     tasks: [],
-    editingTaskId: null
+    editingTaskId: null,
+    // Drag state for n8n-style dragging
+    drag: {
+        isDragging: false,
+        activeNode: null,
+        startX: 0,
+        startY: 0,
+        offsetX: 0,
+        offsetY: 0
+    }
 };
 
 // ===============================================
@@ -460,6 +468,11 @@ function switchMode(mode) {
 // ===============================================
 
 function createTask(name, steps = []) {
+    // Calculate position for new node (vertical layout like n8n)
+    const taskIndex = state.tasks.length;
+    const baseX = 150; // Center horizontally
+    const baseY = 40 + taskIndex * 220; // Stack vertically with spacing
+
     const task = {
         id: generateId(),
         name: name,
@@ -467,10 +480,12 @@ function createTask(name, steps = []) {
             id: generateId(),
             text: step,
             completed: false,
+            completedAt: null, // Timestamp when step was completed
             order: index
         })),
         completed: false,
-        createdAt: Date.now()
+        createdAt: Date.now(),
+        position: { x: baseX, y: baseY }
     };
 
     state.tasks.push(task);
@@ -526,6 +541,13 @@ function toggleStep(taskId, stepId) {
     if (!step) return;
 
     step.completed = !step.completed;
+
+    // Record completion timestamp
+    if (step.completed) {
+        step.completedAt = Date.now();
+    } else {
+        step.completedAt = null;
+    }
 
     // Check if all steps are completed
     task.completed = task.steps.length > 0 && task.steps.every(s => s.completed);
@@ -586,6 +608,18 @@ function createParticles(element) {
 // TASK RENDERING
 // ===============================================
 
+// Format completion time as a readable timestamp
+function formatCompletionTime(timestamp) {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const hours = date.getHours();
+    const mins = date.getMinutes();
+    const secs = date.getSeconds();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')} ${ampm}`;
+}
+
 function renderTasks() {
     // Show/hide empty state
     if (state.tasks.length === 0) {
@@ -597,19 +631,40 @@ function renderTasks() {
 
     elements.emptyState.classList.add('hidden');
 
-    // Render task nodes
-    elements.nodesContainer.innerHTML = state.tasks.map((task, index) => `
-        <div class="task-node ${task.completed ? 'completed' : ''}" data-task-id="${task.id}" data-index="${index}">
+    // Render task nodes with vertical positioning
+    elements.nodesContainer.innerHTML = state.tasks.map((task, index) => {
+        // Get position from task or calculate default vertical position
+        const posX = task.position ? task.position.x : 150;
+        const posY = task.position ? task.position.y : 40 + index * 220;
+
+        return `
+        <div class="task-node ${task.completed ? 'completed' : ''}" 
+             data-task-id="${task.id}" 
+             data-index="${index}"
+             style="left: ${posX}px; top: ${posY}px;">
             <div class="task-header">
+                <div class="drag-handle" title="Drag to move">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                        <circle cx="5" cy="5" r="2"/>
+                        <circle cx="12" cy="5" r="2"/>
+                        <circle cx="19" cy="5" r="2"/>
+                        <circle cx="5" cy="12" r="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <circle cx="19" cy="12" r="2"/>
+                        <circle cx="5" cy="19" r="2"/>
+                        <circle cx="12" cy="19" r="2"/>
+                        <circle cx="19" cy="19" r="2"/>
+                    </svg>
+                </div>
                 <span class="task-name">${escapeHtml(task.name)}</span>
                 <div class="task-actions">
-                    <button class="task-action-btn edit" title="Edit" onclick="editTask('${task.id}')">
+                    <button class="task-action-btn edit" title="Edit" onclick="event.stopPropagation(); editTask('${task.id}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                         </svg>
                     </button>
-                    <button class="task-action-btn delete" title="Delete" onclick="deleteTask('${task.id}')">
+                    <button class="task-action-btn delete" title="Delete" onclick="event.stopPropagation(); deleteTask('${task.id}')">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="3,6 5,6 21,6"/>
                             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
@@ -626,9 +681,18 @@ function renderTasks() {
                                 class="step-checkbox" 
                                 data-step-id="${step.id}"
                                 ${step.completed ? 'checked' : ''}
-                                onchange="toggleStep('${task.id}', '${step.id}')"
+                                onchange="event.stopPropagation(); toggleStep('${task.id}', '${step.id}')"
                             >
                             <span class="step-text">${escapeHtml(step.text)}</span>
+                            ${step.completed && step.completedAt ? `
+                                <span class="step-completion-time" title="Completed at">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <circle cx="12" cy="12" r="10"/>
+                                        <polyline points="12,6 12,12 16,14"/>
+                                    </svg>
+                                    ${formatCompletionTime(step.completedAt)}
+                                </span>
+                            ` : ''}
                         </div>
                     `).join('')}
                 </div>
@@ -637,10 +701,13 @@ function renderTasks() {
                 </div>
             ` : ''}
         </div>
-    `).join('');
+    `}).join('');
 
     // Render connections after a short delay to ensure nodes are positioned
-    setTimeout(renderConnections, 100);
+    setTimeout(() => {
+        renderConnections();
+        setupDragHandlers();
+    }, 100);
 }
 
 function escapeHtml(text) {
@@ -731,6 +798,102 @@ function renderConnections() {
     }
 
     elements.connectionsLayer.innerHTML = pathsHTML;
+}
+
+// ===============================================
+// N8N-STYLE DRAG HANDLERS
+// ===============================================
+
+function setupDragHandlers() {
+    const nodes = document.querySelectorAll('.task-node');
+
+    nodes.forEach(node => {
+        // Mouse down on node or drag handle starts drag
+        node.addEventListener('mousedown', (e) => {
+            // Don't drag if clicking on buttons, checkboxes, or inputs
+            if (e.target.closest('.task-action-btn') ||
+                e.target.closest('.step-checkbox') ||
+                e.target.tagName === 'INPUT') {
+                return;
+            }
+
+            startDrag(e, node);
+        });
+    });
+
+    // Global mouse move and up handlers
+    document.addEventListener('mousemove', handleDrag);
+    document.addEventListener('mouseup', endDrag);
+}
+
+function startDrag(e, node) {
+    e.preventDefault();
+
+    const taskId = node.dataset.taskId;
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    state.drag.isDragging = true;
+    state.drag.activeNode = node;
+    state.drag.startX = e.clientX;
+    state.drag.startY = e.clientY;
+    state.drag.offsetX = task.position.x;
+    state.drag.offsetY = task.position.y;
+
+    node.classList.add('dragging');
+    elements.taskCanvas.classList.add('dragging-node');
+}
+
+function handleDrag(e) {
+    if (!state.drag.isDragging || !state.drag.activeNode) return;
+
+    e.preventDefault();
+
+    const dx = e.clientX - state.drag.startX;
+    const dy = e.clientY - state.drag.startY;
+
+    const newX = Math.max(0, state.drag.offsetX + dx);
+    const newY = Math.max(0, state.drag.offsetY + dy);
+
+    // Update node position visually
+    state.drag.activeNode.style.left = newX + 'px';
+    state.drag.activeNode.style.top = newY + 'px';
+
+    // Update connections in real-time
+    renderConnections();
+}
+
+function endDrag(e) {
+    if (!state.drag.isDragging || !state.drag.activeNode) return;
+
+    const node = state.drag.activeNode;
+    const taskId = node.dataset.taskId;
+    const task = state.tasks.find(t => t.id === taskId);
+
+    if (task) {
+        // Calculate final position
+        const dx = e.clientX - state.drag.startX;
+        const dy = e.clientY - state.drag.startY;
+
+        task.position.x = Math.max(0, state.drag.offsetX + dx);
+        task.position.y = Math.max(0, state.drag.offsetY + dy);
+
+        saveToStorage();
+    }
+
+    node.classList.remove('dragging');
+    elements.taskCanvas.classList.remove('dragging-node');
+
+    // Reset drag state
+    state.drag.isDragging = false;
+    state.drag.activeNode = null;
+    state.drag.startX = 0;
+    state.drag.startY = 0;
+    state.drag.offsetX = 0;
+    state.drag.offsetY = 0;
+
+    // Final connection update
+    renderConnections();
 }
 
 // Re-render connections on window resize
